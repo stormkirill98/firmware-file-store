@@ -48,7 +48,8 @@ export default async function Page({ params }: Props) {
   try {
     parsed = JSON.parse(fileContent);
   } catch (error) {
-    return <p>Ошибка при чтении JSON {error.message}</p>;
+    console.error(error);
+    return <p>Ошибка при чтении JSON</p>;
   }
 
   if (!parsed.description) return <p>Нет описания</p>;
