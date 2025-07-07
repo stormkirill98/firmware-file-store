@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import Link from 'next/link';
 
 export const dynamic = 'force-static';
 
@@ -13,8 +14,6 @@ function walk(dir: string, parts: string[] = []): string[][] {
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
     const newParts = [...parts, entry.name];
-
-    console.log(fullPath, newParts);
 
     if (entry.isDirectory()) {
       result.push(...walk(fullPath, newParts));
@@ -31,39 +30,44 @@ export async function generateStaticParams() {
   return slugs.map((slug) => ({ slug }));
 }
 
+interface FolderProps {
+  dirPath: string; // относительный путь, например: 'content'
+}
+function FolderLinks({ dirPath }: FolderProps) {
+  const infoPath = path.join(CONTENT_ROOT, dirPath);
+  if (!fs.existsSync(infoPath) || !fs.lstatSync(infoPath).isDirectory()) {
+    return null;
+  }
+
+  // Получаем содержимое директории
+  const entries = fs.readdirSync(infoPath, { withFileTypes: true });
+
+  return (
+    <ul>
+      {entries.map(folder => (
+        <li key={folder.name}>
+          <Link href={`/${dirPath}/${folder.name}`}>
+            {folder.name}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 type Props = {
   params: Promise<{ slug?: string[] }>;
 };
 
 export default async function Page({ params }: Props) {
   const awaitedParams = await params;
-
   const slugPath = awaitedParams.slug?.join('/') || '';
-  const infoPath = path.join(CONTENT_ROOT, slugPath, 'information.json');
 
-  if (!fs.existsSync(infoPath)) {
-    return <main className="max-w-2xl m-auto p-8 text-lg">
-      <h1>File</h1>
-      <p>{slugPath}</p>
-    </main>
-  }
+  return <main className="max-w-2xl m-auto p-8 text-lg">
+    <h1>File</h1>
+    <p>{slugPath}</p>
 
-  const fileContent = fs.readFileSync(infoPath, 'utf-8');
-  let parsed: { description?: string };
-
-  try {
-    parsed = JSON.parse(fileContent);
-  } catch (error) {
-    console.error(error);
-    return <p>Ошибка при чтении JSON</p>;
-  }
-
-  if (!parsed.description) return <p>Нет описания</p>;
-
-  return (
-    <main className="max-w-2xl m-auto p-8 text-lg">
-      <p>{parsed.description}</p>
-    </main>
-  );
+    <FolderLinks dirPath={slugPath} />
+  </main>
 }
 
